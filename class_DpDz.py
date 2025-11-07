@@ -34,15 +34,15 @@ class DpDz():
         self.flg_wb = value_fb
 
     
-    def Re_liquid(self, SV_liquid):   
-        return (self.liquid_density * SV_liquid * self.d) / self.liquid_viscosity  
+    def Re_liquid(self, jl):   
+        return (self.liquid_density * jl * self.d) / self.liquid_viscosity  
     
   
-    def Ec(self, SV_liquid):
-        if self.Re_liquid(SV_liquid) <= 2000:
-            ec = 64 / self.Re_liquid(SV_liquid)
+    def Ec(self, jl):
+        if self.Re_liquid(jl) <= 2000:
+            ec = 64 / self.Re_liquid(jl)
         else:
-            ec =  0.3164 * (self.Re_liquid(SV_liquid)) ** (-0.25)
+            ec =  0.3164 * (self.Re_liquid(jl)) ** (-0.25)
         return ec 
         
 
@@ -107,8 +107,8 @@ class DpDz():
     def Ei(self, B, SV_gas):
         return  self.E0(B, SV_gas) * (1 + (self.ki * B) / self.d)
 
-    def Tc (self, B, SV_liquid):
-        return self.Ec(SV_liquid) * self.liquid_density * (SV_liquid) ** 2 / (8 * (1 - self.Fi(B)) ** 2)
+    def Tc (self, B, jl):
+        return self.Ec(jl) * self.liquid_density * (jl) ** 2 / (8 * (1 - self.Fi(B)) ** 2)
 
     def wb(self, B, SV_liquid): 
         T_c = self.Tc(B, SV_liquid)
@@ -144,7 +144,7 @@ class DpDz():
         return sol.root
         
 
-    def __calculate_one_point(self, jg, jl):
+    def calculate_one_point(self, jg, jl):
         params = (jg, jl)
         # Расчет толщины пленки
         B = self.calcOnePoint(params) 
@@ -159,9 +159,14 @@ class DpDz():
         
         return Res
     
+    def calculate(self):
+        Res = []
+        for jl in self.SV_liquid:
+            for jg in self.SV_gas:
+                Res.append(self.calculate_one_point(jg, jl))
+        return Res
 
-    def full_research(self):
-        
+    
 
 param1 = {
 
@@ -195,4 +200,6 @@ second = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=pa
 # print(f'Скорость газа: \n {second.SV_gas} \n Скорость жидкости: \n {second.SV_liquid}')
 # print(np.stack([second.SV_liquid, second.SV_gas], axis=1))
 
-print(second.calculate(60, 0.7))
+print(second.SV_gas[0])
+print(second.SV_liquid[0])
+print(second.calculate())
