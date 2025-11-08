@@ -71,20 +71,21 @@ class DpDz():
         G_array = np.array(self.G)
         x_array = np.array(self.x)
 
-        #  # Проверка совместимости размеров
-        # if G_array.ndim > 0 and x_array.ndim > 0 and G_array.shape != x_array.shape:
-        #     # Если оба массива и размеры не совпадают, пытаемся сделать бродкастинг
-        #     try:
-        #         # Проверяем возможность бродкастинга
-        #         np.broadcast_arrays(G_array, x_array)
-        #     except ValueError:
-        #         raise ValueError("Размеры массивов G и x должны быть совместимы для бродкастинга")
-
         # Расчет расходных скоростей (векторные операции)
-        SV_liquid = np.outer(G_array, 1 - x_array) / self.liquid_density
-        # SV_liquid = G_array * (1 - x_array) / self.liquid_density  # Скорость жидкости [m/s]
+        SV_liquid = np.outer(G_array, 1 - x_array) / self.liquid_density # Скорость жидкости [m/s]
         SV_gas = np.outer(G_array, x_array) / self.gas_density        # Скорость пара [m/s]
-        
+
+        SV_liquid = []
+        SV_gas = []
+        for G in G_array:
+            liq = G * (1 - x_array) / self.liquid_density 
+            gas = G * x_array / self.gas_density 
+            SV_liquid.append(liq)
+            SV_gas.append(gas)
+
+        SV_gas = np.array(SV_gas)
+        SV_liquid = np.array(SV_liquid)
+
         return SV_liquid, SV_gas
 
 
@@ -148,35 +149,51 @@ class DpDz():
         params = (jg, jl)
         # Расчет толщины пленки
         B = self.calcOnePoint(params) 
+        
         # Расчет градиента давления
-        dpdz = self.calcDPDZ(B, jg, jl)  
+        dpdz = self.calcDPDZ(B, jg, jl) 
+        ReL = self.Re_liquid(jl)
         ReG = self.RE0_gas(B, jg)
+
+        
         if self.flg_wb:
             w_b = self.wb(B, jl)
         else:
             w_b = 0
-        Res = [jg, jl, B, dpdz, self.substance, self.Re_liquid(jl), ReG]
+        
+        Res = [jg, jl, B, dpdz, self.substance, ReL, ReG]
         
         return Res
     
     def calculate(self):
+        ndim_gas = self.SV_gas.ndim
+        ndim_liquid = self.SV_liquid.ndim
         Res = []
-        for jl in self.SV_liquid:
-            for jg in self.SV_gas:
-                Res.append(self.calculate_one_point(jg, jl))
-        return Res
+        if ndim_gas > 1 or ndim_liquid > 1:
+            
+            for arr1, arr2 in zip(self.SV_gas, self.SV_liquid):
+                res = []
+                for jg, jl in zip(arr1, arr2):
+                    res.append(self.calculate_one_point(jg, jl))
+                Res.append(res)
+            return(Res)
 
+        else:
+            for jl in self.SV_liquid:
+                for jg in self.SV_gas:
+                    Res.append(self.calculate_one_point(jg, jl))
+            return Res
+        
     
-
 param1 = {
 
-    'Substance': 'Nitrogen-95Ethanol',
-    'Liquid density': 850,
-    'Liquid viscosity': 1420 * 10**(-6), 
-    'Gas density': 2.3, 
-    'Gas viscosity': 7.7 * 10**(-6),
-    'x': np.array([0.5, 0.8, 0.9, 1]),
-    'G': np.array([300, 400])
+    'Substance': 'CO2',
+    'Liquid density': 1125,
+    'Liquid viscosity': 0.00012, 
+    'Gas density': 22.5, 
+    'Gas viscosity': 0.000013,
+    'x': np.linspace(0.1, 0.9, 9),
+    'G': np.array([300, 400, 500])
 
     }
 
@@ -192,14 +209,33 @@ param2 = {
 
     }
 
-# first = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param1)
-second = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param1)
+first = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param1)
+second = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param2)
 
 # df = pd.DataFrame(second.calculate(), columns=['Gas velocity', 'Liquid velocity', 'b', 'dp/dz', 'Substance', 'Re Liquid', 'Re Gas'])
       
 # print(f'Скорость газа: \n {second.SV_gas} \n Скорость жидкости: \n {second.SV_liquid}')
 # print(np.stack([second.SV_liquid, second.SV_gas], axis=1))
 
-print(second.SV_gas[0])
-print(second.SV_liquid[0])
-print(second.calculate())
+# print(second.SV_gas)
+# print(first.SV_liquid)
+# df = pd.DataFrame(second.calculate(),columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
+# print(df)
+# print(first.calculate())
+# df = pd.DataFrame(first.calculate(),columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
+# print(df)
+# print(len(first.calculate()))
+data = []
+for i in first.calculate():
+    df = pd.DataFrame(i,columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
+    df = df.sort_values(['jg'], ignore_index=True)
+    print(df)
+    data.append(df)
+    
+
+plt.plot(param1['x'], data[0]['dpdz'])
+plt.plot(param1['x'], data[1]['dpdz'])
+plt.plot(param1['x'], data[2]['dpdz'])
+plt.plot(param1['x'], data[3]['dpdz'])
+
+plt.show()
