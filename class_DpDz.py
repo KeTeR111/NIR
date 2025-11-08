@@ -2,6 +2,7 @@ import numpy as np
 import sys
 import os
 import glob
+from pathlib import Path
 from scipy import optimize
 import CoolProp.CoolProp as CP
 import pandas as pd
@@ -193,7 +194,7 @@ param1 = {
     'Gas density': 22.5, 
     'Gas viscosity': 0.000013,
     'x': np.linspace(0.1, 0.9, 9),
-    'G': np.array([300, 400, 500])
+    'G': np.array([300, 400, 500, 600])
 
     }
 
@@ -209,22 +210,10 @@ param2 = {
 
     }
 
-first = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param1)
+first = DpDz(g=9.8155, ki=350, d=0.005, value_fb=False, thermodinamic_params=param1)
 second = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param2)
 
-# df = pd.DataFrame(second.calculate(), columns=['Gas velocity', 'Liquid velocity', 'b', 'dp/dz', 'Substance', 'Re Liquid', 'Re Gas'])
-      
-# print(f'Скорость газа: \n {second.SV_gas} \n Скорость жидкости: \n {second.SV_liquid}')
-# print(np.stack([second.SV_liquid, second.SV_gas], axis=1))
 
-# print(second.SV_gas)
-# print(first.SV_liquid)
-# df = pd.DataFrame(second.calculate(),columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
-# print(df)
-# print(first.calculate())
-# df = pd.DataFrame(first.calculate(),columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
-# print(df)
-# print(len(first.calculate()))
 data = []
 for i in first.calculate():
     df = pd.DataFrame(i,columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
@@ -233,10 +222,26 @@ for i in first.calculate():
     data.append(df)
     
 
-plt.plot(param1['x'], data[0]['dpdz'])
-plt.plot(param1['x'], data[1]['dpdz'])
-plt.plot(param1['x'], data[2]['dpdz'])
-plt.plot(param1['x'], data[3]['dpdz'])
+path = Path("/Users/andrey/Desktop/NIR/Datasets/Graph9")
+fl = []
+
+for file_path in path.rglob('*'):
+    if file_path.is_file():
+        try:
+            fl.append(pd.read_csv(file_path, sep='\t', decimal='.'))
+        except Exception as e:
+            print(f"Ошибка: {e}")
+
+    
+
+fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(8, 16))
+
+for i in range(len(data)):
+    ax[i].plot(param1['x'], data[i]['dpdz'])
+    ax[i].plot(param1['x'], 0.7 * data[i]['dpdz'], color='red', linestyle='--')
+    ax[i].plot(param1['x'], 1.3 * data[i]['dpdz'], color='red', linestyle='--')
+    ax[i].plot(fl[i]['X'], fl[i]['Y'] * 1000, marker='o', linestyle='')
+    ax[i].set_title(f'G = {param1["G"][i]}' )
+    
 
 plt.show()
-# gduiuiusejfjeuhfiushfiu
