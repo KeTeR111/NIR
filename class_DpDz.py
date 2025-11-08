@@ -239,3 +239,4 @@ plt.plot(param1['x'], data[2]['dpdz'])
 plt.plot(param1['x'], data[3]['dpdz'])
 
 plt.show()
+# gduiuiusejfjeuhfiushfiu
