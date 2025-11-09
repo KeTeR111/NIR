@@ -1,13 +1,10 @@
 import numpy as np 
-import sys
-import os
-import glob
 from pathlib import Path
 from scipy import optimize
 import CoolProp.CoolProp as CP
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy import interpolate
+
 
 class DpDz():
 
@@ -185,63 +182,64 @@ class DpDz():
                     Res.append(self.calculate_one_point(jg, jl))
             return Res
         
-    
-param1 = {
+if __name__ == 'main':
+    param1 = {
 
-    'Substance': 'CO2',
-    'Liquid density': 1125,
-    'Liquid viscosity': 0.00012, 
-    'Gas density': 22.5, 
-    'Gas viscosity': 0.000013,
-    'x': np.linspace(0.1, 0.9, 9),
-    'G': np.array([300, 400, 500, 600])
+        'Substance': 'CO2',
+        'Liquid density': 1125,
+        'Liquid viscosity': 0.00012, 
+        'Gas density': 22.5, 
+        'Gas viscosity': 0.000013,
+        'x': np.linspace(0.1, 0.9, 9),
+        'G': np.array([300, 400, 500, 600])
 
-    }
+        }
 
-param2 = {
+    param2 = {
 
-    'Substance': 'Nitrogen-95Ethanol',
-    'Liquid density': 850,
-    'Liquid viscosity': 1420 * 10**(-6), 
-    'Gas density': 2.3, 
-    'Gas viscosity': 7.7 * 10**(-6),
-    'Liquid velocity': np.array([0.1, 0.5, 0.8]),
-    'Gas velocity': np.array([i for i in range(5, 26, 5)])
+        'Substance': 'Nitrogen-95Ethanol',
+        'Liquid density': 850,
+        'Liquid viscosity': 1420 * 10**(-6), 
+        'Gas density': 2.3, 
+        'Gas viscosity': 7.7 * 10**(-6),
+        'Liquid velocity': np.array([0.1, 0.5, 0.8]),
+        'Gas velocity': np.array([i for i in range(5, 26, 5)])
 
-    }
+        }
 
-first = DpDz(g=9.8155, ki=350, d=0.005, value_fb=False, thermodinamic_params=param1)
-second = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param2)
+    first = DpDz(g=9.8155, ki=350, d=0.005, value_fb=False, thermodinamic_params=param1)
+    second = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=param2)
 
 
-data = []
-for i in first.calculate():
-    df = pd.DataFrame(i,columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
-    df = df.sort_values(['jg'], ignore_index=True)
-    print(df)
-    data.append(df)
-    
+    data = []
+    for i in first.calculate():
+        df = pd.DataFrame(i,columns=['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
+        df = df.sort_values(['jg'], ignore_index=True)
+        print(df)
+        data.append(df)
+        
 
-path = Path("/Users/andrey/Desktop/NIR/Datasets/Graph9")
-fl = []
+    path = Path("/Users/andrey/Desktop/NIR/Datasets/Graph9")
+    fl = []
+    for file_path in path.rglob('*'):
+        if file_path.is_file():
+            try:
+                fl.append(pd.read_csv(file_path, sep='\t', decimal='.'))
+            except Exception as e:
+                print(f"Ошибка: {e}")
 
-for file_path in path.rglob('*'):
-    if file_path.is_file():
-        try:
-            fl.append(pd.read_csv(file_path, sep='\t', decimal='.'))
-        except Exception as e:
-            print(f"Ошибка: {e}")
+        
 
-    
+    fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(8, 16))
 
-fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(8, 16))
+    for i in range(len(data)):
+        ax[i].plot(param1['x'], data[i]['dpdz'])
+        ax[i].plot(param1['x'], 0.7 * data[i]['dpdz'], color='red', linestyle='--')
+        ax[i].plot(param1['x'], 1.3 * data[i]['dpdz'], color='red', linestyle='--')
+        ax[i].plot(fl[i]['X'], fl[i]['Y'] * 1000, marker='o', linestyle='')
+        ax[i].set_title(f'G = {param1["G"][i]}' )
+        
 
-for i in range(len(data)):
-    ax[i].plot(param1['x'], data[i]['dpdz'])
-    ax[i].plot(param1['x'], 0.7 * data[i]['dpdz'], color='red', linestyle='--')
-    ax[i].plot(param1['x'], 1.3 * data[i]['dpdz'], color='red', linestyle='--')
-    ax[i].plot(fl[i]['X'], fl[i]['Y'] * 1000, marker='o', linestyle='')
-    ax[i].set_title(f'G = {param1["G"][i]}' )
-    
+    plt.show()
 
-plt.show()
+
