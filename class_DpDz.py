@@ -4,17 +4,16 @@ from scipy import optimize
 import CoolProp.CoolProp as CP
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from typing import Optional
 
 class DpDz():
 
-    def __init__(self, g, d, ki, thermodinamic_params: dict, value_fb: bool):
+    def __init__(self, g, d, ki: int | None, thermodinamic_params: dict, value_fb: bool):
 
         self.g = g   # Ускорение свободного падения
         self.d = d  # Диаметр канала 
-        self.ki = ki    # Коэффициент для расчета по Уоллису меняется в зависимости от условия 
+        self.ki: int | None = ki # Коэффициент для расчета по Уоллису меняется в зависимости от условия 
         self.s = np.pi * (self.d / 2) ** 2 # Площадь сечения трубы
-        
         self.substance = thermodinamic_params['Substance'] 
         self.T = thermodinamic_params.get('Temperature', None)
         self.P = thermodinamic_params.get('Pressure', None) 
@@ -34,19 +33,6 @@ class DpDz():
         self.check_values()
         self.flg_wb = value_fb
 
-    
-    def Re_liquid(self, jl):   
-        return (self.liquid_density * jl * self.d) / self.liquid_viscosity  
-    
-  
-    def Ec(self, jl):
-        if self.Re_liquid(jl) <= 2000:
-            ec = 64 / self.Re_liquid(jl)
-        else:
-            ec =  0.3164 * (self.Re_liquid(jl)) ** (-0.25)
-        return ec 
-        
-
     def check_values(self):
         if self.SV_liquid is None or self.SV_gas is None:
             if self.G is not None and self.x is not None:
@@ -54,10 +40,13 @@ class DpDz():
                     self.SV_liquid, self.SV_gas = self.phase_velocity_G_x()
                 else:
                     self.liquid_density = CP.PropsSI('D', 'T', self.T + 273, 'Q', 0, self.substance)      # Плотность жидкости [kg/m³]
-                    self.liquid_viscosity = CP.PropsSI('V', 'T', self.T + 273, 'Q', 0, self.substance)       # Вязкость жидкости [Pa·s]
+                    mu_liq = CP.PropsSI('VISCOSITY', 'T', self.T + 273, 'Q', 0, self.substance)   # Вязкость жидкости [Pa·s]
+                    self.liquid_viscosity = mu_liq 
+                    
                     # Свойства пара (Q=1)
                     self.gas_density = CP.PropsSI('D', 'T', self.T + 273, 'Q', 1, self.substance)         # Плотность пара [kg/m³]
-                    self.gas_viscosity = CP.PropsSI('V', 'T', self.T + 273, 'Q', 1, self.substance)          # Вязкость пара [Pa·s]
+                    mu_gas = CP.PropsSI('VISCOSITY', 'T', self.T + 273, 'Q', 1, self.substance)      # Вязкость пара [Pa·s]
+                    self.gas_viscosity = mu_gas 
 
                     self.delta_density = self.liquid_density - self.gas_density
 
@@ -66,7 +55,6 @@ class DpDz():
                 print(f"G is None: {self.G is None}, X is None: {self.x is None}")
                 raise ValueError("Недостаточно данных для расчета скоростей фаз")
             
-
     def phase_velocity_G_x(self):
         """
         Расчет расходных скоростей фаз из массовой скорости
@@ -108,6 +96,16 @@ class DpDz():
 
         return SV_liquid, SV_gas
 
+    def Re_liquid(self, jl):   
+        return (self.liquid_density * jl * self.d) / self.liquid_viscosity  
+
+    def Ec(self, jl):
+        if self.Re_liquid(jl) <= 2000:
+            ec = 64 / self.Re_liquid(jl)
+        else:
+            ec =  0.3164 * (self.Re_liquid(jl)) ** (-0.25)
+        return ec 
+        
     # Диаметр межфазной поверхности 
     def Di(self, B):      
         return  self.d - 2 * B  
@@ -125,8 +123,11 @@ class DpDz():
 
     # Коэффициент межфазного трения Уоллиса 
     def Ei(self, B, SV_gas):
-        return  self.E0(B, SV_gas) * (1 + (self.ki * B) / self.d)
-
+        if self.ki is None:
+            return  self.E0(B, SV_gas) * (1 + (24 * (self.liquid_density / self.gas_density) **(1 / 3) * B) / self.d)
+        else:
+            return  self.E0(B, SV_gas) * (1 + (self.ki * B) / self.d)
+    
     def Tc (self, B, jl):
         return self.Ec(jl) * self.liquid_density * (jl) ** 2 / (8 * (1 - self.Fi(B)) ** 2)
 
@@ -160,7 +161,7 @@ class DpDz():
     def calcOnePoint(self, args):
         sol = optimize.root_scalar(self.equation,
                                 args=args,   
-                                bracket=[1.0e-13, self.d / 2-1.0e-13], 
+                                bracket=[1.0e-13, self.d / 2 - 1.0e-13], 
                                 method='brentq')
         return sol.root
         
@@ -180,7 +181,15 @@ class DpDz():
         else:
             w_b = 0
         
-        Res = [jg, jl, B, dpdz, self.substance, ReL, ReG]
+        Res = {
+            'jg': jg,
+            'jl': jl,
+            'B': B,
+            'DpDz': dpdz,
+            'Substance': self.substance,
+            'Re liquid': ReL,
+            'Re gas': ReG
+            }
         
         return Res
     
@@ -189,37 +198,21 @@ class DpDz():
         ndim_gas = self.SV_gas.ndim
         ndim_liquid = self.SV_liquid.ndim
         Res = []
+
         if ndim_gas > 1 or ndim_liquid > 1:
-            
             for arr1, arr2 in zip(self.SV_gas, self.SV_liquid):
                 res = []
                 for jg, jl in zip(arr1, arr2):
                     res.append(self.calculate_one_point(jg, jl))
                 Res.append(res)
-            return(Res)
-
         else:
             for jl in self.SV_liquid:
                 for jg in self.SV_gas:
                     Res.append(self.calculate_one_point(jg, jl))
-            return Res
-        
+
+        if len(Res) == 1:
+            Res = Res[0]
+
+        return Res
 
 
-
-T = np.array([0, -10, -20, -30, -35, -40])
-for t in T:
-    params_t = {
-        'Substance': 'CO2',
-        'Temperature': t,
-        'G': 300,
-        'x': np.linspace(0.1, 0.9, 9),
-    }
-
-    result = DpDz(g=9.8155, ki=300, d=0.005, value_fb=False, thermodinamic_params=params_t)
-
-    df = pd.DataFrame(*result.calculate(), columns =['jg', 'jl', 'B', 'dpdz', 'substance', 'Re liquid', 'Re gas'])
-    print(df)
-
-    plt.plot(params_t['x'], df['dpdz'])
-plt.show()
