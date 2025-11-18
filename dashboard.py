@@ -475,7 +475,7 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
                 gridcolor=COLORS['grid_lines'],
                 linecolor=COLORS['border'],
                 zerolinecolor=COLORS['border'],
-                title_font=dict(size=14, color=COLORS['text'], weight=500),
+                title_font=dict(size=14, color=COLORS['text']),  # Убрано свойство weight
                 tickfont=dict(size=12, color=COLORS['text_secondary']),
                 showgrid=True,
                 gridwidth=1,
@@ -485,7 +485,7 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
                 gridcolor=COLORS['grid_lines'],
                 linecolor=COLORS['border'],
                 zerolinecolor=COLORS['border'],
-                title_font=dict(size=14, color=COLORS['text'], weight=500),
+                title_font=dict(size=14, color=COLORS['text']),  # Убрано свойство weight
                 tickfont=dict(size=12, color=COLORS['text_secondary']),
                 showgrid=True,
                 gridwidth=1,
