@@ -4,3 +4,5 @@ matplotlib
 scipy
 coolprop
 openpyxl
+plotly
+dash

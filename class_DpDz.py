@@ -8,7 +8,7 @@ from typing import Optional
 
 class DpDz():
 
-    def __init__(self, g, d, ki: int | None, thermodinamic_params: dict, value_fb: bool):
+    def __init__(self, g, d, ki, thermodinamic_params: dict, value_fb: bool):
 
         self.g = g   # Ускорение свободного падения
         self.d = d  # Диаметр канала 
@@ -124,7 +124,7 @@ class DpDz():
     # Коэффициент межфазного трения Уоллиса 
     def Ei(self, B, SV_gas):
         if self.ki is None:
-            return  self.E0(B, SV_gas) * (1 + (24 * (self.liquid_density / self.gas_density) **(1 / 3) * B) / self.d)
+            return  self.E0(B, SV_gas) * (1 + (24 * (self.liquid_density / self.gas_density) ** (1 / 3) * B) / self.d)
         else:
             return  self.E0(B, SV_gas) * (1 + (self.ki * B) / self.d)
     
@@ -166,7 +166,7 @@ class DpDz():
         return sol.root
         
     # Функция всех параметров в 1 точке 
-    def calculate_one_point(self, jg, jl):
+    def calculate_one_point(self, jg, jl, x):
         params = (jg, jl)
         # Расчет толщины пленки
         B = self.calcOnePoint(params) 
@@ -188,7 +188,8 @@ class DpDz():
             'DpDz': dpdz,
             'Substance': self.substance,
             'Re liquid': ReL,
-            'Re gas': ReG
+            'Re gas': ReG,
+            'x': x
             }
         
         return Res
@@ -202,17 +203,16 @@ class DpDz():
         if ndim_gas > 1 or ndim_liquid > 1:
             for arr1, arr2 in zip(self.SV_gas, self.SV_liquid):
                 res = []
-                for jg, jl in zip(arr1, arr2):
-                    res.append(self.calculate_one_point(jg, jl))
+                for jg, jl, x in zip(arr1, arr2, self.x):
+                    res.append(self.calculate_one_point(jg, jl, x))
                 Res.append(res)
         else:
             for jl in self.SV_liquid:
                 for jg in self.SV_gas:
-                    Res.append(self.calculate_one_point(jg, jl))
+                    Res.append(self.calculate_one_point(jg, jl, x))
 
         if len(Res) == 1:
             Res = Res[0]
 
         return Res
-
 
