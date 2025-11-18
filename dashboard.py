@@ -3,6 +3,7 @@ from dash import dcc, html, dash_table, Input, Output, callback
 import pandas as pd
 import os
 import plotly.express as px
+from dash.dash import no_update
 
 # Инициализация приложения
 app = dash.Dash(__name__)
@@ -29,17 +30,31 @@ PARAM_DISPLAY_NAMES = {
     'G': 'G, kg/m²s',
 }
 
-# Цветовая схема
+# Обновленная цветовая схема для лучшей доступности и удобства
 COLORS = {
-    'background': '#1a1a1a',
-    'card_background': '#2d2d2d',
-    'primary': '#4fc3f7',
-    'secondary': '#81c784',
-    'text': '#ffffff',
-    'border': '#555555',
-    'header_bg': '#1976d2',
-    'hover': '#424242',
-    'grid_lines': '#444444'
+    'background': '#0f0f1a',
+    'card_background': '#1a1a2e',
+    'primary': '#4facfe',
+    'secondary': '#00c3ff',
+    'accent': '#a020f0',
+    'text': '#f0f0f0',
+    'text_secondary': '#b0b0c0',
+    'border': 'rgba(255, 255, 255, 0.15)',
+    'header_bg': 'rgba(79, 172, 254, 0.1)',
+    'hover': '#252542',
+    'grid_lines': 'rgba(255, 255, 255, 0.08)',
+    'card_border': '1px solid rgba(255, 255, 255, 0.1)',
+    'card_shadow': '0 8px 20px rgba(0, 0, 0, 0.4)',
+    'dropdown_bg': '#252542',
+    'dropdown_border': '1px solid rgba(255, 255, 255, 0.15)',
+    'success': '#00d4aa',
+    'warning': '#ffaa00',
+    'error': '#ff4757',
+    'table_header': '#2d2d4a',
+    'table_even': 'rgba(79, 172, 254, 0.03)',
+    'table_odd': 'rgba(160, 32, 240, 0.03)',
+    'dropdown_menu_bg': '#1a1a2e',
+    'dropdown_option_hover': '#2d2d4a'
 }
 
 # Функция для получения доступных опций
@@ -78,14 +93,16 @@ def format_mode_value(param, value):
 # Базовая структура приложения
 app.layout = html.Div([
     html.Div([
-        html.H1("Исследование", 
+        html.H1("Исследование гидродинамических характеристик", 
                 style={
                     'textAlign': 'center', 
                     'marginBottom': 30,
                     'color': COLORS['text'],
-                    'fontWeight': '700',
-                    'fontSize': '2.5rem',
-                    'textShadow': '0 2px 4px rgba(0,0,0,0.5)'
+                    'fontWeight': '600',
+                    'fontSize': '2.2rem',
+                    'padding': '15px 0',
+                    'borderBottom': f"1px solid {COLORS['border']}",
+                    'textShadow': '0 2px 10px rgba(0, 0, 0, 0.3)',
                 }),
         
         # Первая строка - вещество, параметр, режим
@@ -99,9 +116,12 @@ app.layout = html.Div([
                     value=get_substances()[0] if get_substances() else None,
                     clearable=False,
                     style={
-                        'border': f"2px solid {COLORS['border']}",
-                        'borderRadius': '8px',
-                        'backgroundColor': COLORS['background'],  # Фон селектора как основной фон
+                        'border': COLORS['dropdown_border'],
+                        'borderRadius': '10px',
+                        'backgroundColor': COLORS['dropdown_bg'],
+                        'color': COLORS['text'],
+                        'padding': '8px',
+                        'fontSize': '14px',
                     }
                 ),
             ], style={'width': '32%', 'display': 'inline-block', 'padding': '15px', 'textAlign': 'center'}),
@@ -113,9 +133,12 @@ app.layout = html.Div([
                     id='param-dropdown',
                     clearable=False,
                     style={
-                        'border': f"2px solid {COLORS['border']}",
-                        'borderRadius': '8px',
-                        'backgroundColor': COLORS['background'],  # Фон селектора как основной фон
+                        'border': COLORS['dropdown_border'],
+                        'borderRadius': '10px',
+                        'backgroundColor': COLORS['dropdown_bg'],
+                        'color': COLORS['text'],
+                        'padding': '8px',
+                        'fontSize': '14px',
                     }
                 ),
             ], style={'width': '32%', 'display': 'inline-block', 'padding': '15px', 'textAlign': 'center'}),
@@ -127,19 +150,23 @@ app.layout = html.Div([
                     id='mode-dropdown',
                     clearable=False,
                     style={
-                        'border': f"2px solid {COLORS['border']}",
-                        'borderRadius': '8px',
-                        'backgroundColor': COLORS['background'],  # Фон селектора как основной фон
+                        'border': COLORS['dropdown_border'],
+                        'borderRadius': '10px',
+                        'backgroundColor': COLORS['dropdown_bg'],
+                        'color': COLORS['text'],
+                        'padding': '8px',
+                        'fontSize': '14px',
                     }
                 ),
             ], style={'width': '32%', 'display': 'inline-block', 'padding': '15px', 'textAlign': 'center'}),
         ], style={
             'backgroundColor': COLORS['card_background'],
             'borderRadius': '12px',
-            'boxShadow': '0 4px 12px rgba(0, 0, 0, 0.5)',
-            'marginBottom': '15px',
-            'border': f"2px solid {COLORS['border']}",
-            'textAlign': 'center'
+            'boxShadow': COLORS['card_shadow'],
+            'marginBottom': '20px',
+            'border': COLORS['card_border'],
+            'textAlign': 'center',
+            'padding': '20px',
         }),
         
         # Вторая строка - оси X и Y
@@ -151,9 +178,12 @@ app.layout = html.Div([
                     id='x-axis-dropdown',
                     clearable=False,
                     style={
-                        'border': f"2px solid {COLORS['border']}",
-                        'borderRadius': '8px',
-                        'backgroundColor': COLORS['background'],  # Фон селектора как основной фон
+                        'border': COLORS['dropdown_border'],
+                        'borderRadius': '10px',
+                        'backgroundColor': COLORS['dropdown_bg'],
+                        'color': COLORS['text'],
+                        'padding': '8px',
+                        'fontSize': '14px',
                     }
                 ),
             ], style={'width': '48%', 'display': 'inline-block', 'padding': '15px', 'textAlign': 'center'}),
@@ -165,19 +195,23 @@ app.layout = html.Div([
                     id='y-axis-dropdown',
                     clearable=False,
                     style={
-                        'border': f"2px solid {COLORS['border']}",
-                        'borderRadius': '8px',
-                        'backgroundColor': COLORS['background'],  # Фон селектора как основной фон
+                        'border': COLORS['dropdown_border'],
+                        'borderRadius': '10px',
+                        'backgroundColor': COLORS['dropdown_bg'],
+                        'color': COLORS['text'],
+                        'padding': '8px',
+                        'fontSize': '14px',
                     }
                 ),
             ], style={'width': '48%', 'display': 'inline-block', 'padding': '15px', 'textAlign': 'center'}),
         ], style={
             'backgroundColor': COLORS['card_background'],
             'borderRadius': '12px',
-            'boxShadow': '0 4px 12px rgba(0, 0, 0, 0.5)',
-            'marginBottom': '25px',
-            'border': f"2px solid {COLORS['border']}",
-            'textAlign': 'center'
+            'boxShadow': COLORS['card_shadow'],
+            'marginBottom': '30px',
+            'border': COLORS['card_border'],
+            'textAlign': 'center',
+            'padding': '20px',
         }),
         
         # Основной контент - график и таблица с одинаковой высотой
@@ -189,13 +223,13 @@ app.layout = html.Div([
                 ], style={
                     'backgroundColor': COLORS['card_background'],
                     'borderRadius': '12px',
-                    'boxShadow': '0 4px 12px rgba(0, 0, 0, 0.5)',
-                    'padding': '20px',
-                    'border': f"2px solid {COLORS['border']}",
+                    'boxShadow': COLORS['card_shadow'],
+                    'padding': '25px',
+                    'border': COLORS['card_border'],
                     'height': '720px',
-                    'textAlign': 'center'
+                    'textAlign': 'center',
                 })
-            ], style={'width': '68%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '15px'}),
+            ], style={'width': '68%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '20px'}),
             
             # Таблица
             html.Div([
@@ -206,7 +240,9 @@ app.layout = html.Div([
                                'marginBottom': '20px',
                                'color': COLORS['text'],
                                'fontWeight': '600',
-                               'fontSize': '18px'
+                               'fontSize': '1.3rem',
+                               'padding': '10px 0',
+                               'borderBottom': f"1px solid {COLORS['border']}"
                            }),
                     dash_table.DataTable(
                         id='data-table',
@@ -218,12 +254,12 @@ app.layout = html.Div([
                             'fontSize': '13px',
                             'width': '100%',
                             'borderRadius': '8px',
-                            'backgroundColor': COLORS['card_background'],
-                            'border': f"2px solid {COLORS['border']}"
+                            'backgroundColor': 'transparent',
+                            'border': 'none'
                         },
                         style_cell={
                             'textAlign': 'center',
-                            'padding': '10px',
+                            'padding': '12px',
                             'minWidth': '80px', 
                             'width': '80px', 
                             'maxWidth': '100px',
@@ -231,40 +267,50 @@ app.layout = html.Div([
                             'fontSize': '12px',
                             'overflow': 'hidden',
                             'textOverflow': 'ellipsis',
-                            'backgroundColor': COLORS['card_background'],
+                            'backgroundColor': 'transparent',
                             'color': COLORS['text'],
-                            'border': f"1px solid {COLORS['border']}",
-                            'fontWeight': '500'
+                            'border': 'none',
+                            'fontWeight': '500',
+                            'transition': 'all 0.3s ease'
                         },
                         style_header={
-                            'backgroundColor': COLORS['header_bg'],
+                            'backgroundColor': COLORS['table_header'],
                             'color': COLORS['text'],
-                            'fontWeight': '700',
+                            'fontWeight': '600',
                             'fontSize': '13px',
                             'padding': '12px',
-                            'border': f"2px solid {COLORS['border']}",
-                            'textAlign': 'center'
+                            'border': 'none',
+                            'textAlign': 'center',
+                            'borderBottom': f"1px solid {COLORS['border']}"
                         },
                         style_data={
-                            'border': f"1px solid {COLORS['border']}",
-                            'color': COLORS['text']
+                            'border': 'none',
+                            'color': COLORS['text'],
+                            'borderBottom': '1px solid rgba(255, 255, 255, 0.05)'
                         },
                         style_data_conditional=[
                             {
                                 'if': {'state': 'selected'},
                                 'backgroundColor': COLORS['hover'],
                                 'border': f"2px solid {COLORS['primary']}"
+                            },
+                            {
+                                'if': {'column_id': '№'},
+                                'fontWeight': '600',
+                                'color': COLORS['primary'],
+                                'backgroundColor': COLORS['table_header']
                             }
                         ],
+                        style_as_list_view=True
                     )
                 ], style={
                     'backgroundColor': COLORS['card_background'],
                     'borderRadius': '12px',
-                    'boxShadow': '0 4px 12px rgba(0, 0, 0, 0.5)',
-                    'padding': '20px',
-                    'border': f"2px solid {COLORS['border']}",
+                    'boxShadow': COLORS['card_shadow'],
+                    'padding': '25px',
+                    'border': COLORS['card_border'],
                     'height': '720px',
-                    'textAlign': 'center'
+                    'textAlign': 'center',
                 })
             ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top'})
         ])
@@ -272,7 +318,9 @@ app.layout = html.Div([
         'backgroundColor': COLORS['background'],
         'minHeight': '100vh',
         'padding': '30px',
-        'fontFamily': '"Segoe UI", "Inter", -apple-system, BlinkMacSystemFont, sans-serif'
+        'fontFamily': '"Segoe UI", "Inter", -apple-system, BlinkMacSystemFont, sans-serif',
+        'backgroundImage': 'radial-gradient(circle at 10% 20%, rgba(15, 15, 26, 0.8) 0%, rgba(10, 10, 20, 1) 100%)',
+        'color': COLORS['text']
     })
 ])
 
@@ -344,7 +392,7 @@ def update_axis_options(selected_substance, selected_param, selected_mode):
     if not all([selected_substance, selected_param, selected_mode]):
         return [], None, [], None
     
-    file_path = get_file_path(selected_substance, selected_param, selected_mode)
+    file_path = os.path.join(DATA_DIR, selected_substance, selected_param, f"{selected_mode}.csv")
     
     try:
         df = pd.read_csv(file_path)
@@ -411,39 +459,53 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
         fig = px.line(df, x=x_axis, y=y_axis, 
                      title=f"{y_axis_formatted} vs {x_axis_formatted}<br>{selected_substance} ({param_display_name} = {mode_display_value})")
         
-        # Стилизация графика для темной темы с лучшей читаемостью
+        # Стилизация графика для темной темы с улучшенной контрастностью
         fig.update_layout(
             xaxis_title=x_axis_formatted,
             yaxis_title=y_axis_formatted,
             title_x=0.5,
             height=650,
-            margin=dict(l=50, r=50, t=100, b=50),
+            margin=dict(l=60, r=40, t=80, b=60),
             plot_bgcolor=COLORS['card_background'],
-            paper_bgcolor=COLORS['card_background'],
-            font=dict(color=COLORS['text'], size=14),
-            title_font_size=18,
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=COLORS['text'], size=13),
+            title_font_size=16,
             title_font_color=COLORS['text'],
             xaxis=dict(
                 gridcolor=COLORS['grid_lines'],
                 linecolor=COLORS['border'],
                 zerolinecolor=COLORS['border'],
-                title_font=dict(size=14, color=COLORS['text']),
-                tickfont=dict(size=12, color=COLORS['text'])
+                title_font=dict(size=14, color=COLORS['text'], weight=500),
+                tickfont=dict(size=12, color=COLORS['text_secondary']),
+                showgrid=True,
+                gridwidth=1,
+                linewidth=1
             ),
             yaxis=dict(
                 gridcolor=COLORS['grid_lines'],
                 linecolor=COLORS['border'],
                 zerolinecolor=COLORS['border'],
-                title_font=dict(size=14, color=COLORS['text']),
-                tickfont=dict(size=12, color=COLORS['text'])
-            )
+                title_font=dict(size=14, color=COLORS['text'], weight=500),
+                tickfont=dict(size=12, color=COLORS['text_secondary']),
+                showgrid=True,
+                gridwidth=1,
+                linewidth=1
+            ),
+            hoverlabel=dict(
+                bgcolor=COLORS['dropdown_bg'],
+                font_size=12,
+                font_family="Arial",
+                font_color=COLORS['text']
+            ),
+            hovermode="x unified"
         )
         
-        # Стилизация линий графика - БЕЗ ТОЧЕК
+        # Стилизация линий графика с улучшенной видимостью
         fig.update_traces(
-            mode='lines',  # Только линии, без маркеров
-            line=dict(width=4, color=COLORS['primary'])  # Цвет и толщина линии
-            # Убраны маркеры (точки)
+            mode='lines+markers',
+            line=dict(width=2.5, color=COLORS['primary']),
+            marker=dict(size=4, color=COLORS['accent']),
+            hovertemplate="<b>%{x}:</b> %{y}<extra></extra>"
         )
         
     except Exception as e:
@@ -453,23 +515,102 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
     # Создаем колонки для таблицы с форматированными названиями
     columns = [{"name": "№", "id": "№"}] + [{"name": format_column_name(col), "id": col} for col in df.columns]
     
-    # Создаем стили для выделения выбранных колонок
+    # Создаем стили для выделения выбранных колонок и чередования строк
     style_conditional = [
         {
+            'if': {'state': 'selected'},
+            'backgroundColor': COLORS['hover'],
+            'border': f"2px solid {COLORS['primary']}"
+        },
+        {
+            'if': {'column_id': '№'},
+            'fontWeight': '600',
+            'color': COLORS['primary'],
+            'backgroundColor': COLORS['table_header']
+        },
+        {
+            'if': {'row_index': 'odd'},
+            'backgroundColor': COLORS['table_odd']
+        },
+        {
+            'if': {'row_index': 'even'},
+            'backgroundColor': COLORS['table_even']
+        },
+        {
             'if': {'column_id': x_axis},
-            'backgroundColor': 'rgba(79, 195, 247, 0.3)',
-            'fontWeight': '700',
-            'color': COLORS['text']
+            'borderLeft': f"3px solid {COLORS['primary']}",
+            'backgroundColor': 'rgba(79, 172, 254, 0.2)'
         },
         {
             'if': {'column_id': y_axis},
-            'backgroundColor': 'rgba(255, 183, 77, 0.3)',
-            'fontWeight': '700',
-            'color': COLORS['text']
+            'borderLeft': f"3px solid {COLORS['accent']}",
+            'backgroundColor': 'rgba(160, 32, 240, 0.2)'
         }
     ]
     
     return fig, df_with_index.to_dict('records'), columns, style_conditional
+
+# Добавляем CSS для стилизации выпадающих списков
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            /* Стили для выпадающих списков */
+            .Select-control {
+                background-color: ''' + COLORS['dropdown_bg'] + ''' !important;
+                color: ''' + COLORS['text'] + ''' !important;
+                border: ''' + COLORS['dropdown_border'] + ''' !important;
+            }
+            
+            .Select-value-label {
+                color: ''' + COLORS['text'] + ''' !important;
+            }
+            
+            .Select-menu-outer {
+                background-color: ''' + COLORS['dropdown_menu_bg'] + ''' !important;
+                border: ''' + COLORS['dropdown_border'] + ''' !important;
+                z-index: 1000 !important;
+            }
+            
+            .Select-option {
+                background-color: ''' + COLORS['dropdown_menu_bg'] + ''' !important;
+                color: ''' + COLORS['text'] + ''' !important;
+            }
+            
+            .Select-option.is-focused {
+                background-color: ''' + COLORS['dropdown_option_hover'] + ''' !important;
+            }
+            
+            .Select-input > input {
+                color: ''' + COLORS['text'] + ''' !important;
+            }
+            
+            /* Стили для плейсхолдера */
+            .Select-placeholder {
+                color: ''' + COLORS['text_secondary'] + ''' !important;
+            }
+            
+            /* Стили для иконки стрелки */
+            .Select-arrow-zone .Select-arrow {
+                border-top-color: ''' + COLORS['text_secondary'] + ''' !important;
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
 
 if __name__ == '__main__':
     app.run(debug=True)
