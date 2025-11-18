@@ -550,6 +550,35 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
     
     return fig, df_with_index.to_dict('records'), columns, style_conditional
 
+# Функция для запуска дашборда
+def run_dashboard(port=8050, host='127.0.0.1', open_browser=True, debug=False):
+    """Запускает дашборд с указанными параметрами"""
+    import webbrowser
+    import threading
+    import time
+    
+    def open_browser_delayed():
+        """Открывает браузер с задержкой после запуска сервера"""
+        time.sleep(3)
+        webbrowser.open_new(f"http://{host}:{port}/")
+    
+    if open_browser:
+        # Запускаем браузер в отдельном потоке
+        browser_thread = threading.Thread(target=open_browser_delayed)
+        browser_thread.daemon = True
+        browser_thread.start()
+    
+    print(f"🚀 Дашборд запущен на http://{host}:{port}")
+    print("⏹️  Для остановки нажмите Ctrl+C")
+    
+    try:
+        app.run(debug=debug, port=port, host=host)
+    except Exception as e:
+        print(f"❌ Ошибка при запуске: {e}")
+        return False
+    
+    return True
+
 # Добавляем CSS для стилизации выпадающих списков
 app.index_string = '''
 <!DOCTYPE html>
@@ -613,4 +642,5 @@ app.index_string = '''
 '''
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Стандартный запуск для разработки
+    run_dashboard(debug=True)
