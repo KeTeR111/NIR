@@ -6,6 +6,9 @@ import plotly.express as px
 from dash.dash import no_update
 import numpy as np
 from class_DpDz import DpDz  # Импортируем класс для расчетов
+import base64
+import datetime
+import io
 
 # Инициализация приложения
 app = dash.Dash(__name__)
@@ -219,8 +222,17 @@ def format_mode_value(param, value):
         return f"{value} {DIMENSIONS[param]}"
     return str(value)
 
+# Функция для генерации имени файла с временной меткой
+def generate_filename(substance, timestamp=None):
+    if timestamp is None:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"results_{substance}_{timestamp}.csv"
+
 # Базовая структура приложения
 app.layout = html.Div([
+    # Скрытый компонент для хранения данных расчета
+    dcc.Store(id='calculation-data-store'),
+    
     html.Div([
         html.H1("Исследование гидродинамических характеристик", 
                 style={
@@ -792,9 +804,10 @@ def toggle_advanced_params(n_clicks, current_style):
     else:
         return {**current_style, 'display': 'none'}
 
-# Callback для выполнения расчета - ОБНОВЛЕННАЯ ВЕРСИЯ С ИСПОЛЬЗОВАНИЕМ КЛАССА DpDz
+# Callback для выполнения расчета и сохранения данных
 @app.callback(
-    Output('calculation-results', 'children'),
+    [Output('calculation-results', 'children'),
+     Output('calculation-data-store', 'data')],
     Input('calculate-button', 'n_clicks'),
     [State('substance-calc-dropdown', 'value'),
      State('d-input', 'value'),
@@ -818,7 +831,7 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
                        SV_liquid, SV_gas):
     if n_clicks == 0:
         return html.P("Введите параметры и нажмите 'Выполнить расчет'", 
-                     style={'textAlign': 'center', 'color': COLORS['text_secondary']})
+                     style={'textAlign': 'center', 'color': COLORS['text_secondary']}), no_update
     
     # Проверка обязательных полей
     required_fields = {
@@ -837,7 +850,7 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
             html.H4("Ошибка", style={'color': COLORS['error'], 'textAlign': 'center'}),
             html.P(f"Заполните все обязательные параметры: {', '.join(missing_fields)}",
                   style={'textAlign': 'center', 'color': COLORS['text_secondary']})
-        ])
+        ]), no_update
     
     # Проверка количества точек
     if num_points < 2:
@@ -845,7 +858,7 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
             html.H4("Ошибка", style={'color': COLORS['error'], 'textAlign': 'center'}),
             html.P("Количество точек расчета должно быть целым числом больше 1",
                   style={'textAlign': 'center', 'color': COLORS['text_secondary']})
-        ])
+        ]), no_update
     
     # Проверка диапазона паросодержания
     if x_start is None or x_end is None:
@@ -853,7 +866,7 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
             html.H4("Ошибка", style={'color': COLORS['error'], 'textAlign': 'center'}),
             html.P("Заполните диапазон паросодержания",
                   style={'textAlign': 'center', 'color': COLORS['text_secondary']})
-        ])
+        ]), no_update
     
     try:
         # Создаем диапазон значений x
@@ -907,7 +920,7 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
             html.H4("Ошибка расчета", style={'color': COLORS['error'], 'textAlign': 'center'}),
             html.P(f"Произошла ошибка при выполнении расчета: {str(e)}",
                   style={'textAlign': 'center', 'color': COLORS['text_secondary']})
-        ])
+        ]), no_update
     
     # Строим график DpDz от x
     try:
@@ -1024,7 +1037,25 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
     if ki:
         params_info += f"\n- Коэффициент ki: {ki}"
     
-    return html.Div([
+    # Сохраняем данные для экспорта
+    export_data = {
+        'results': results_df.to_dict('records'),
+        'params': {
+            'substance': substance,
+            'd': d,
+            'G': G,
+            'T': T,
+            'g': g,
+            'num_points': num_points,
+            'x_start': x_start,
+            'x_end': x_end,
+            'P': P,
+            'ki': ki,
+            'timestamp': datetime.datetime.now().isoformat()
+        }
+    }
+    
+    results_content = html.Div([
         html.H4("Результаты расчета", style={
             'color': COLORS['success'], 
             'textAlign': 'center', 
@@ -1151,40 +1182,99 @@ def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_
         
         # Кнопка экспорта результатов
         html.Div([
-            html.Button(
-                'Экспорт результатов в CSV',
-                id='export-results-button',
-                n_clicks=0,
-                style={
-                    'width': '25%',
-                    'padding': '12px',
-                    'borderRadius': '8px',
-                    'border': 'none',
-                    'backgroundColor': COLORS['success'],
-                    'color': COLORS['text'],
-                    'fontSize': '14px',
-                    'fontWeight': '600',
-                    'cursor': 'pointer',
-                    'transition': 'all 0.3s ease',
-                    'margin': '20px auto 0',
-                    'display': 'block'
-                }
+            html.A(
+                html.Button(
+                    '📥 Экспорт результатов в CSV',
+                    id='export-results-button',
+                    n_clicks=0,
+                    style={
+                        'width': '25%',
+                        'padding': '12px',
+                        'borderRadius': '8px',
+                        'border': 'none',
+                        'backgroundColor': COLORS['success'],
+                        'color': COLORS['text'],
+                        'fontSize': '14px',
+                        'fontWeight': '600',
+                        'cursor': 'pointer',
+                        'transition': 'all 0.3s ease',
+                        'margin': '20px auto 0',
+                        'display': 'block'
+                    }
+                ),
+                id='download-link',
+                href="",
+                download="",
+                style={'textDecoration': 'none'}
             ),
             html.Div(id='export-status', style={'marginTop': '10px'})
         ], style={'textAlign': 'center'})
     ])
+    
+    return results_content, export_data
 
-# Callback для экспорта результатов
+# Callback для генерации и скачивания CSV файла
 @app.callback(
-    Output('export-status', 'children'),
-    Input('export-results-button', 'n_clicks'),
+    [Output('download-link', 'href'),
+     Output('download-link', 'download'),
+     Output('export-status', 'children')],
+    [Input('export-results-button', 'n_clicks'),
+     Input('calculation-data-store', 'data')],
     prevent_initial_call=True
 )
-def export_results(n_clicks):
-    if n_clicks > 0:
-        return html.P("Функция экспорта будет реализована в будущей версии", 
-                     style={'color': COLORS['success'], 'textAlign': 'center'})
-    return ""
+def export_results(n_clicks, stored_data):
+    if n_clicks is None or n_clicks == 0 or stored_data is None:
+        return "", "", ""
+    
+    try:
+        # Восстанавливаем DataFrame из сохраненных данных
+        results_df = pd.DataFrame(stored_data['results'])
+        params = stored_data['params']
+        
+        # Создаем CSV строку
+        csv_string = results_df.to_csv(index=False, encoding='utf-8')
+        
+        # Создаем строку с метаданными
+        meta_info = f"# Результаты расчета гидродинамических характеристик\n"
+        meta_info += f"# Вещество: {params['substance']}\n"
+        meta_info += f"# Диаметр: {params['d']} м\n"
+        meta_info += f"# Массовый расход: {params['G']} кг/м²с\n"
+        meta_info += f"# Температура: {params['T']} °C\n"
+        meta_info += f"# Ускорение свободного падения: {params['g']} м/с²\n"
+        meta_info += f"# Количество точек: {params['num_points']}\n"
+        meta_info += f"# Диапазон паросодержания: {params['x_start']} - {params['x_end']}\n"
+        if params.get('P'):
+            meta_info += f"# Давление: {params['P']} Па\n"
+        if params.get('ki'):
+            meta_info += f"# Коэффициент ki: {params['ki']}\n"
+        meta_info += f"# Дата расчета: {params['timestamp']}\n"
+        meta_info += f"# \n"
+        
+        # Объединяем метаданные с данными
+        full_csv = meta_info + csv_string
+        
+        # Кодируем в base64 для скачивания
+        csv_base64 = base64.b64encode(full_csv.encode('utf-8')).decode()
+        
+        # Генерируем имя файла
+        filename = generate_filename(params['substance'])
+        
+        # Создаем href для скачивания
+        href = f"data:text/csv;base64,{csv_base64}"
+        
+        status_message = html.P(
+            "✅ Файл готов к скачиванию. Нажмите на кнопку выше.",
+            style={'color': COLORS['success'], 'textAlign': 'center'}
+        )
+        
+        return href, filename, status_message
+        
+    except Exception as e:
+        error_message = html.P(
+            f"❌ Ошибка при экспорте: {str(e)}",
+            style={'color': COLORS['error'], 'textAlign': 'center'}
+        )
+        return "", "", error_message
 
 # Все остальные callback'ы остаются без изменений
 # Callback для обновления параметров
