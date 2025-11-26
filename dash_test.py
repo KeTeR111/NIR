@@ -4,6 +4,8 @@ import pandas as pd
 import os
 import plotly.express as px
 from dash.dash import no_update
+import numpy as np
+from class_DpDz import DpDz  # Импортируем класс для расчетов
 
 # Инициализация приложения
 app = dash.Dash(__name__)
@@ -67,14 +69,7 @@ COLORS = {
     'input_background': '#252542'
 }
 
-
-
-
-
-
-
 # Стили для интерактивного расчета
-
 CALC_STYLES = {
     'label': {
         'fontWeight': '600', 
@@ -163,12 +158,6 @@ def create_input_param(param_id, label_text, input_type='number', placeholder_te
             ),
         ], style=CALC_STYLES['param_container'])
 
-
-
-
-
-
-
 # Функция для создания параметра с диапазоном
 def create_range_param(start_id, end_id, main_label, start_label="От", end_label="До"):
     """Создает параметр с диапазоном значений"""
@@ -229,15 +218,6 @@ def format_mode_value(param, value):
     if param in DIMENSIONS and DIMENSIONS[param]:
         return f"{value} {DIMENSIONS[param]}"
     return str(value)
-
-
-
-
-
-
-
-
-
 
 # Базовая структура приложения
 app.layout = html.Div([
@@ -324,15 +304,8 @@ app.layout = html.Div([
     'backgroundColor': COLORS['background']
 })
 
-
-
-
-
-
-
-
 # Callback для переключения между вкладками
-@callback(
+@app.callback(
     Output('tab-content', 'children'),
     Input('app-tabs', 'value')
 )
@@ -463,9 +436,9 @@ def render_tab_content(tab):
                         'height': '720px',
                         'textAlign': 'center',
                     })
-                ], style={'width': '68%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '20px'}),
+                ], style={'width': '68%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '10px'}),
                 
-                # Таблица
+                # Таблица - ИСПРАВЛЕНА: теперь не выходит за границы
                 html.Div([
                     html.Div([
                         html.H3("Исходные данные", 
@@ -478,65 +451,80 @@ def render_tab_content(tab):
                                    'padding': '10px 0',
                                    'borderBottom': f"1px solid {COLORS['border']}"
                                }),
-                        dash_table.DataTable(
-                            id='data-table',
-                            page_action='none',
-                            style_table={
-                                'overflowX': 'auto', 
-                                'height': '650px',
-                                'overflowY': 'auto',
-                                'fontSize': '13px',
-                                'width': '100%',
-                                'borderRadius': '8px',
-                                'backgroundColor': 'transparent',
-                                'border': 'none'
-                            },
-                            style_cell={
-                                'textAlign': 'center',
-                                'padding': '12px',
-                                'minWidth': '80px', 
-                                'width': '80px', 
-                                'maxWidth': '100px',
-                                'whiteSpace': 'normal',
-                                'fontSize': '12px',
-                                'overflow': 'hidden',
-                                'textOverflow': 'ellipsis',
-                                'backgroundColor': 'transparent',
-                                'color': COLORS['text'],
-                                'border': 'none',
-                                'fontWeight': '500',
-                                'transition': 'all 0.3s ease'
-                            },
-                            style_header={
-                                'backgroundColor': COLORS['table_header'],
-                                'color': COLORS['text'],
-                                'fontWeight': '600',
-                                'fontSize': '13px',
-                                'padding': '12px',
-                                'border': 'none',
-                                'textAlign': 'center',
-                                'borderBottom': f"1px solid {COLORS['border']}"
-                            },
-                            style_data={
-                                'border': 'none',
-                                'color': COLORS['text'],
-                                'borderBottom': '1px solid rgba(255, 255, 255, 0.05)'
-                            },
-                            style_data_conditional=[
-                                {
-                                    'if': {'state': 'selected'},
-                                    'backgroundColor': COLORS['hover'],
-                                    'border': f"2px solid {COLORS['primary']}"
+                        html.Div([
+                            dash_table.DataTable(
+                                id='data-table',
+                                page_action='none',
+                                style_table={
+                                    'overflowX': 'auto', 
+                                    'height': '650px',
+                                    'overflowY': 'auto',
+                                    'fontSize': '12px',
+                                    'width': '100%',
+                                    'borderRadius': '8px',
+                                    'backgroundColor': 'transparent',
+                                    'border': 'none',
+                                    'minWidth': '100%'
                                 },
-                                {
-                                    'if': {'column_id': '№'},
+                                style_cell={
+                                    'textAlign': 'center',
+                                    'padding': '10px',
+                                    'minWidth': '70px', 
+                                    'width': '70px', 
+                                    'maxWidth': '90px',
+                                    'whiteSpace': 'normal',
+                                    'fontSize': '11px',
+                                    'overflow': 'hidden',
+                                    'textOverflow': 'ellipsis',
+                                    'backgroundColor': 'transparent',
+                                    'color': COLORS['text'],
+                                    'border': 'none',
+                                    'fontWeight': '500',
+                                    'transition': 'all 0.3s ease'
+                                },
+                                style_header={
+                                    'backgroundColor': COLORS['table_header'],
+                                    'color': COLORS['text'],
                                     'fontWeight': '600',
-                                    'color': COLORS['primary'],
-                                    'backgroundColor': COLORS['table_header']
-                                }
-                            ],
-                            style_as_list_view=True
-                        )
+                                    'fontSize': '12px',
+                                    'padding': '10px',
+                                    'border': 'none',
+                                    'textAlign': 'center',
+                                    'borderBottom': f"1px solid {COLORS['border']}"
+                                },
+                                style_data={
+                                    'border': 'none',
+                                    'color': COLORS['text'],
+                                    'borderBottom': '1px solid rgba(255, 255, 255, 0.05)'
+                                },
+                                style_data_conditional=[
+                                    {
+                                        'if': {'state': 'selected'},
+                                        'backgroundColor': COLORS['hover'],
+                                        'border': f"2px solid {COLORS['primary']}"
+                                    },
+                                    {
+                                        'if': {'column_id': '№'},
+                                        'fontWeight': '600',
+                                        'color': COLORS['primary'],
+                                        'backgroundColor': COLORS['table_header']
+                                    },
+                                    {
+                                        'if': {'row_index': 'odd'},
+                                        'backgroundColor': COLORS['table_odd']
+                                    },
+                                    {
+                                        'if': {'row_index': 'even'},
+                                        'backgroundColor': COLORS['table_even']
+                                    }
+                                ],
+                                style_as_list_view=True
+                            )
+                        ], style={
+                            'width': '100%',
+                            'height': '100%',
+                            'overflow': 'hidden'
+                        })
                     ], style={
                         'backgroundColor': COLORS['card_background'],
                         'borderRadius': '12px',
@@ -545,9 +533,11 @@ def render_tab_content(tab):
                         'border': COLORS['card_border'],
                         'height': '720px',
                         'textAlign': 'center',
+                        'display': 'flex',
+                        'flexDirection': 'column'
                     })
                 ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top'})
-            ])
+            ], style={'width': '100%', 'display': 'flex', 'justifyContent': 'space-between'})
         ])
     
     elif tab == 'tab-calculator':
@@ -608,12 +598,22 @@ def render_tab_content(tab):
                             'Введите температуру'
                         ),
                         
-                        # Давление
+                        # Ускорение свободного падения (теперь обязательный параметр)
                         create_input_param(
-                            'P-input',
-                            'Давление (P), Па',
+                            'g-input',
+                            'Ускорение свободного падения (g), м/с²',
                             'number',
-                            'Введите давление'
+                            'Введите ускорение',
+                            9.81
+                        ),
+                        
+                        # Количество точек расчета (новый обязательный параметр)
+                        create_input_param(
+                            'num-points-input',
+                            'Количество точек расчета',
+                            'number',
+                            'Введите количество точек',
+                            50
                         ),
                         
                         # Паросодержание (диапазон)
@@ -669,13 +669,12 @@ def render_tab_content(tab):
                            }),
                     
                     html.Div([
-                        # Ускорение свободного падения
+                        # Давление (теперь дополнительный параметр)
                         create_input_param(
-                            'g-input',
-                            'Ускорение свободного падения (g), м/с²',
+                            'P-input',
+                            'Давление (P), Па',
                             'number',
-                            'Введите ускорение',
-                            9.81
+                            'Введите давление'
                         ),
                         
                         # Коэффициент ki
@@ -782,7 +781,7 @@ def render_tab_content(tab):
         ])
 
 # Callback для показа/скрытия дополнительных параметров
-@callback(
+@app.callback(
     Output('advanced-params', 'style'),
     Input('toggle-advanced-button', 'n_clicks'),
     State('advanced-params', 'style')
@@ -793,18 +792,19 @@ def toggle_advanced_params(n_clicks, current_style):
     else:
         return {**current_style, 'display': 'none'}
 
-# Callback для выполнения расчета
-@callback(
+# Callback для выполнения расчета - ОБНОВЛЕННАЯ ВЕРСИЯ С ИСПОЛЬЗОВАНИЕМ КЛАССА DpDz
+@app.callback(
     Output('calculation-results', 'children'),
     Input('calculate-button', 'n_clicks'),
     [State('substance-calc-dropdown', 'value'),
      State('d-input', 'value'),
      State('G-input', 'value'),
      State('T-input', 'value'),
-     State('P-input', 'value'),
+     State('g-input', 'value'),
+     State('num-points-input', 'value'),
      State('x-start-input', 'value'),
      State('x-end-input', 'value'),
-     State('g-input', 'value'),
+     State('P-input', 'value'),
      State('ki-input', 'value'),
      State('liquid-density-input', 'value'),
      State('liquid-viscosity-input', 'value'),
@@ -813,7 +813,7 @@ def toggle_advanced_params(n_clicks, current_style):
      State('SV-liquid-input', 'value'),
      State('SV-gas-input', 'value')]
 )
-def perform_calculation(n_clicks, substance, d, G, T, P, x_start, x_end, g, ki, 
+def perform_calculation(n_clicks, substance, d, G, T, g, num_points, x_start, x_end, P, ki, 
                        liquid_density, liquid_viscosity, gas_density, gas_viscosity, 
                        SV_liquid, SV_gas):
     if n_clicks == 0:
@@ -821,53 +821,374 @@ def perform_calculation(n_clicks, substance, d, G, T, P, x_start, x_end, g, ki,
                      style={'textAlign': 'center', 'color': COLORS['text_secondary']})
     
     # Проверка обязательных полей
-    if not all([substance, d, G, T]):
+    required_fields = {
+        'вещество': substance,
+        'диаметр': d,
+        'расход': G,
+        'температура': T,
+        'ускорение свободного падения': g,
+        'количество точек расчета': num_points
+    }
+    
+    missing_fields = [name for name, value in required_fields.items() if value is None or value == '']
+    
+    if missing_fields:
         return html.Div([
             html.H4("Ошибка", style={'color': COLORS['error'], 'textAlign': 'center'}),
-            html.P("Заполните все обязательные параметры: вещество, диаметр, расход и температуру",
+            html.P(f"Заполните все обязательные параметры: {', '.join(missing_fields)}",
                   style={'textAlign': 'center', 'color': COLORS['text_secondary']})
         ])
     
-    # Здесь будет логика расчета
-    # Пока просто выводим введенные значения
+    # Проверка количества точек
+    if num_points < 2:
+        return html.Div([
+            html.H4("Ошибка", style={'color': COLORS['error'], 'textAlign': 'center'}),
+            html.P("Количество точек расчета должно быть целым числом больше 1",
+                  style={'textAlign': 'center', 'color': COLORS['text_secondary']})
+        ])
     
-    result_text = f"""
-    Расчет выполнен с параметрами:
+    # Проверка диапазона паросодержания
+    if x_start is None or x_end is None:
+        return html.Div([
+            html.H4("Ошибка", style={'color': COLORS['error'], 'textAlign': 'center'}),
+            html.P("Заполните диапазон паросодержания",
+                  style={'textAlign': 'center', 'color': COLORS['text_secondary']})
+        ])
+    
+    try:
+        # Создаем диапазон значений x
+        x_values = np.linspace(x_start, x_end, num_points)
+        
+        # Подготавливаем параметры для расчета
+        thermodynamic_params = {
+            'Substance': substance,
+            'Temperature': T,
+            'G': G,
+            'x': x_values
+        }
+        
+        # Добавляем опциональные параметры, если они заданы
+        if P is not None:
+            thermodynamic_params['Pressure'] = P
+        if liquid_density is not None:
+            thermodynamic_params['Liquid density'] = liquid_density
+        if liquid_viscosity is not None:
+            thermodynamic_params['Liquid viscosity'] = liquid_viscosity
+        if gas_density is not None:
+            thermodynamic_params['Gas density'] = gas_density
+        if gas_viscosity is not None:
+            thermodynamic_params['Gas viscosity'] = gas_viscosity
+        if SV_liquid is not None:
+            thermodynamic_params['Liquid velocity'] = SV_liquid
+        if SV_gas is not None:
+            thermodynamic_params['Gas velocity'] = SV_gas
+        
+        # Создаем экземпляр класса DpDz и выполняем расчет
+        # value_fb = True - учитывать скорость на границе раздела фаз
+        calculator = DpDz(g=g, d=d, ki=ki, thermodinamic_params=thermodynamic_params, value_fb=True)
+        results = calculator.calculate()
+        
+        # Преобразуем результаты в DataFrame
+        if isinstance(results, list):
+            # Если результат - список словарей
+            results_df = pd.DataFrame(results)
+        else:
+            # Если результат - одиночный словарь
+            results_df = pd.DataFrame([results])
+        
+        # Убеждаемся, что все необходимые колонки присутствуют
+        required_columns = ['x', 'DpDz']
+        for col in required_columns:
+            if col not in results_df.columns:
+                results_df[col] = np.nan
+        
+    except Exception as e:
+        return html.Div([
+            html.H4("Ошибка расчета", style={'color': COLORS['error'], 'textAlign': 'center'}),
+            html.P(f"Произошла ошибка при выполнении расчета: {str(e)}",
+                  style={'textAlign': 'center', 'color': COLORS['text_secondary']})
+        ])
+    
+    # Строим график DpDz от x
+    try:
+        fig = px.line(results_df, x='x', y='DpDz', 
+                     title=f"Зависимость градиента давления от паросодержания<br>{substance} (G={G} кг/м²с, d={d} м, T={T}°C)")
+        
+        fig.update_layout(
+            xaxis_title="Паросодержание, x",
+            yaxis_title="Градиент давления, DpDz (Па/м)",
+            title_x=0.5,
+            height=500,
+            margin=dict(l=60, r=40, t=80, b=60),
+            plot_bgcolor=COLORS['card_background'],
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=COLORS['text'], size=13),
+            title_font_size=16,
+            title_font_color=COLORS['text'],
+            xaxis=dict(
+                gridcolor=COLORS['grid_lines'],
+                linecolor=COLORS['border'],
+                zerolinecolor=COLORS['border'],
+                title_font=dict(size=14, color=COLORS['text']),
+                tickfont=dict(size=12, color=COLORS['text_secondary']),
+                showgrid=True,
+                gridwidth=1,
+                linewidth=1
+            ),
+            yaxis=dict(
+                gridcolor=COLORS['grid_lines'],
+                linecolor=COLORS['border'],
+                zerolinecolor=COLORS['border'],
+                title_font=dict(size=14, color=COLORS['text']),
+                tickfont=dict(size=12, color=COLORS['text_secondary']),
+                showgrid=True,
+                gridwidth=1,
+                linewidth=1
+            ),
+            hoverlabel=dict(
+                bgcolor=COLORS['dropdown_bg'],
+                font_size=12,
+                font_family="Arial",
+                font_color=COLORS['text']
+            )
+        )
+        
+        # Стилизация линии графика
+        fig.update_traces(
+            mode='lines+markers',
+            line=dict(width=2.5, color=COLORS['primary']),
+            marker=dict(size=4, color=COLORS['accent']),
+            hovertemplate="<b>x:</b> %{x:.3f}<br><b>DpDz:</b> %{y:.1f} Па/м<extra></extra>"
+        )
+        
+    except Exception as e:
+        fig = px.line(title="Ошибка построения графика")
+        print(f"Error creating plot: {e}")
+    
+    # Подготавливаем данные для таблицы
+    table_df = results_df.copy()
+    table_df.insert(0, '№', range(1, len(table_df) + 1))
+    
+    # Форматируем числа для таблицы
+    display_df = table_df.copy()
+    for col in display_df.columns:
+        if col != '№' and col != 'Substance':
+            if display_df[col].dtype in [np.float64, np.float32]:
+                display_df[col] = display_df[col].round(6)
+    
+    # Создаем колонки для таблицы
+    columns = [{"name": "№", "id": "№"}]
+    for col in results_df.columns:
+        if col in DIMENSIONS and DIMENSIONS[col]:
+            columns.append({"name": f"{col} ({DIMENSIONS[col]})", "id": col})
+        else:
+            columns.append({"name": col, "id": col})
+    
+    # Стили для таблицы
+    style_conditional = [
+        {
+            'if': {'state': 'selected'},
+            'backgroundColor': COLORS['hover'],
+            'border': f"2px solid {COLORS['primary']}"
+        },
+        {
+            'if': {'column_id': '№'},
+            'fontWeight': '600',
+            'color': COLORS['primary'],
+            'backgroundColor': COLORS['table_header']
+        },
+        {
+            'if': {'row_index': 'odd'},
+            'backgroundColor': COLORS['table_odd']
+        },
+        {
+            'if': {'row_index': 'even'},
+            'backgroundColor': COLORS['table_even']
+        }
+    ]
+    
+    # Сводная информация о параметрах расчета
+    params_info = f"""
+    Параметры расчета:
     - Вещество: {substance}
     - Диаметр: {d} м
     - Массовый расход: {G} кг/м²с
     - Температура: {T} °C
+    - Ускорение свободного падения: {g} м/с²
+    - Количество точек расчета: {num_points}
+    - Диапазон паросодержания: от {x_start} до {x_end}
     """
     
     if P:
-        result_text += f"\n- Давление: {P} Па"
-    if x_start is not None and x_end is not None:
-        result_text += f"\n- Паросодержание: от {x_start} до {x_end}"
-    if g:
-        result_text += f"\n- Ускорение свободного падения: {g} м/с²"
+        params_info += f"\n- Давление: {P} Па"
     if ki:
-        result_text += f"\n- Коэффициент ki: {ki}"
-    if liquid_density:
-        result_text += f"\n- Плотность жидкости: {liquid_density} кг/м³"
-    if liquid_viscosity:
-        result_text += f"\n- Вязкость жидкости: {liquid_viscosity} Па·с"
-    if gas_density:
-        result_text += f"\n- Плотность газа: {gas_density} кг/м³"
-    if gas_viscosity:
-        result_text += f"\n- Вязкость газа: {gas_viscosity} Па·с"
-    if SV_liquid:
-        result_text += f"\n- Скорость жидкости: {SV_liquid} м/с"
-    if SV_gas:
-        result_text += f"\n- Скорость газа: {SV_gas} м/с"
+        params_info += f"\n- Коэффициент ki: {ki}"
     
     return html.Div([
-        html.H4("Результаты расчета", style={'color': COLORS['success'], 'textAlign': 'center', 'marginBottom': '15px'}),
-        html.P(result_text, style={'whiteSpace': 'pre-line', 'textAlign': 'left', 'padding': '0 20px'})
+        html.H4("Результаты расчета", style={
+            'color': COLORS['success'], 
+            'textAlign': 'center', 
+            'marginBottom': '20px',
+            'fontSize': '1.5rem'
+        }),
+        
+        # Информация о параметрах
+        html.Div([
+            html.H5("Параметры расчета", style={
+                'color': COLORS['text'], 
+                'marginBottom': '15px',
+                'textAlign': 'center'
+            }),
+            html.P(params_info, style={
+                'whiteSpace': 'pre-line', 
+                'textAlign': 'left', 
+                'padding': '15px 20px',
+                'backgroundColor': COLORS['card_background'],
+                'borderRadius': '8px',
+                'border': COLORS['card_border'],
+                'marginBottom': '20px'
+            })
+        ]),
+        
+        # График и таблица
+        html.Div([
+            # График
+            html.Div([
+                html.Div([
+                    dcc.Graph(figure=fig, style={'height': '500px'})
+                ], style={
+                    'backgroundColor': COLORS['card_background'],
+                    'borderRadius': '12px',
+                    'boxShadow': COLORS['card_shadow'],
+                    'padding': '25px',
+                    'border': COLORS['card_border'],
+                    'height': '580px',
+                    'textAlign': 'center',
+                })
+            ], style={'width': '68%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '10px'}),
+            
+            # Таблица
+            html.Div([
+                html.Div([
+                    html.H3("Результаты расчета", 
+                           style={
+                               'textAlign': 'center', 
+                               'marginBottom': '20px',
+                               'color': COLORS['text'],
+                               'fontWeight': '600',
+                               'fontSize': '1.3rem',
+                               'padding': '10px 0',
+                               'borderBottom': f"1px solid {COLORS['border']}"
+                           }),
+                    html.Div([
+                        dash_table.DataTable(
+                            data=display_df.to_dict('records'),
+                            columns=columns,
+                            page_action='none',
+                            style_table={
+                                'overflowX': 'auto', 
+                                'height': '520px',
+                                'overflowY': 'auto',
+                                'fontSize': '12px',
+                                'width': '100%',
+                                'borderRadius': '8px',
+                                'backgroundColor': 'transparent',
+                                'border': 'none',
+                                'minWidth': '100%'
+                            },
+                            style_cell={
+                                'textAlign': 'center',
+                                'padding': '10px',
+                                'minWidth': '70px', 
+                                'width': '70px', 
+                                'maxWidth': '90px',
+                                'whiteSpace': 'normal',
+                                'fontSize': '11px',
+                                'overflow': 'hidden',
+                                'textOverflow': 'ellipsis',
+                                'backgroundColor': 'transparent',
+                                'color': COLORS['text'],
+                                'border': 'none',
+                                'fontWeight': '500',
+                                'transition': 'all 0.3s ease'
+                            },
+                            style_header={
+                                'backgroundColor': COLORS['table_header'],
+                                'color': COLORS['text'],
+                                'fontWeight': '600',
+                                'fontSize': '12px',
+                                'padding': '10px',
+                                'border': 'none',
+                                'textAlign': 'center',
+                                'borderBottom': f"1px solid {COLORS['border']}"
+                            },
+                            style_data={
+                                'border': 'none',
+                                'color': COLORS['text'],
+                                'borderBottom': '1px solid rgba(255, 255, 255, 0.05)'
+                            },
+                            style_data_conditional=style_conditional,
+                            style_as_list_view=True
+                        )
+                    ], style={
+                        'width': '100%',
+                        'height': '100%',
+                        'overflow': 'hidden'
+                    })
+                ], style={
+                    'backgroundColor': COLORS['card_background'],
+                    'borderRadius': '12px',
+                    'boxShadow': COLORS['card_shadow'],
+                    'padding': '25px',
+                    'border': COLORS['card_border'],
+                    'height': '580px',
+                    'textAlign': 'center',
+                    'display': 'flex',
+                    'flexDirection': 'column'
+                })
+            ], style={'width': '30%', 'display': 'inline-block', 'verticalAlign': 'top'})
+        ], style={'width': '100%', 'display': 'flex', 'justifyContent': 'space-between'}),
+        
+        # Кнопка экспорта результатов
+        html.Div([
+            html.Button(
+                'Экспорт результатов в CSV',
+                id='export-results-button',
+                n_clicks=0,
+                style={
+                    'width': '25%',
+                    'padding': '12px',
+                    'borderRadius': '8px',
+                    'border': 'none',
+                    'backgroundColor': COLORS['success'],
+                    'color': COLORS['text'],
+                    'fontSize': '14px',
+                    'fontWeight': '600',
+                    'cursor': 'pointer',
+                    'transition': 'all 0.3s ease',
+                    'margin': '20px auto 0',
+                    'display': 'block'
+                }
+            ),
+            html.Div(id='export-status', style={'marginTop': '10px'})
+        ], style={'textAlign': 'center'})
     ])
+
+# Callback для экспорта результатов
+@app.callback(
+    Output('export-status', 'children'),
+    Input('export-results-button', 'n_clicks'),
+    prevent_initial_call=True
+)
+def export_results(n_clicks):
+    if n_clicks > 0:
+        return html.P("Функция экспорта будет реализована в будущей версии", 
+                     style={'color': COLORS['success'], 'textAlign': 'center'})
+    return ""
 
 # Все остальные callback'ы остаются без изменений
 # Callback для обновления параметров
-@callback(
+@app.callback(
     [Output('param-dropdown', 'options'),
      Output('param-dropdown', 'value')],
     Input('substance-dropdown', 'value')
@@ -891,7 +1212,7 @@ def update_param_options(selected_substance):
     return options, value
 
 # Callback для обновления режимов
-@callback(
+@app.callback(
     [Output('mode-dropdown', 'options'),
      Output('mode-dropdown', 'value')],
     [Input('substance-dropdown', 'value'),
@@ -921,7 +1242,7 @@ def update_mode_options(selected_substance, selected_param):
     return options, value
 
 # Callback для обновления доступных колонок для осей
-@callback(
+@app.callback(
     [Output('x-axis-dropdown', 'options'),
      Output('x-axis-dropdown', 'value'),
      Output('y-axis-dropdown', 'options'),
@@ -960,7 +1281,7 @@ def get_file_path(selected_substance, selected_param, selected_mode):
     return os.path.join(DATA_DIR, selected_substance, selected_param, f"{selected_mode}.csv")
 
 # Основной callback для обновления графика и таблицы
-@callback(
+@app.callback(
     [Output('data-plot', 'figure'),
      Output('data-table', 'data'),
      Output('data-table', 'columns'),
@@ -1017,7 +1338,7 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
                 gridcolor=COLORS['grid_lines'],
                 linecolor=COLORS['border'],
                 zerolinecolor=COLORS['border'],
-                title_font=dict(size=14, color=COLORS['text']),  # Убрано свойство weight
+                title_font=dict(size=14, color=COLORS['text']),
                 tickfont=dict(size=12, color=COLORS['text_secondary']),
                 showgrid=True,
                 gridwidth=1,
@@ -1027,7 +1348,7 @@ def update_content(selected_substance, selected_param, selected_mode, x_axis, y_
                 gridcolor=COLORS['grid_lines'],
                 linecolor=COLORS['border'],
                 zerolinecolor=COLORS['border'],
-                title_font=dict(size=14, color=COLORS['text']),  # Убрано свойство weight
+                title_font=dict(size=14, color=COLORS['text']),
                 tickfont=dict(size=12, color=COLORS['text_secondary']),
                 showgrid=True,
                 gridwidth=1,
