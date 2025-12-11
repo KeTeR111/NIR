@@ -100,10 +100,13 @@ class DpDz():
         return (self.liquid_density * jl * self.d) / self.liquid_viscosity  
 
     def Ec(self, jl):
-        if self.Re_liquid(jl) <= 2000:
-            ec = 64 / self.Re_liquid(jl)
+        Re_l = self.Re_liquid(jl)
+        if Re_l <= 2000:
+            ec = 64 / Re_l
         else:
-            ec =  0.3164 * (self.Re_liquid(jl)) ** (-0.25)
+            # ec =  0.3164 * (Re_l) ** (-0.25)
+            ec = 1 / (1.82 * np.log10(Re_l) - 1.64) ** 2
+            # ec = (1.82 * np.log10(self.Re_liquid(jl)) - 1.64) ** (-2)
         return ec 
         
     # Диаметр межфазной поверхности 
@@ -115,45 +118,52 @@ class DpDz():
         return ((self.d - 2 * B) / self.d) ** 2                                          
         
     # Число Рейнольдса  для газообразной фазы
-    def RE0_gas(self, B, SV_gas):    
-        return (self.gas_density * SV_gas / self.Fi(B) * self.Di(B)) / self.gas_viscosity 
+    def RE0_gas(self, B, jg):    
+        return (self.gas_density * jg / self.Fi(B) * self.Di(B)) / self.gas_viscosity 
 
-    def E0(self, B, SV_gas):
-        return (0.3164 * (self.RE0_gas(B, SV_gas)) ** (-0.25))
+    def E0(self, B, jg):
+        Re_G = self.RE0_gas(B, jg)
+        # return (0.3164 * (self.RE0_gas(B, jg)) ** (-0.25))
+        return 1 / (1.82 * np.log10(Re_G) - 1.64) ** 2
+        # return ( 1.82 * np.log10(self.RE0_gas(B, jg) - 1.64) ) ** (-2)
 
     # Коэффициент межфазного трения Уоллиса 
-    def Ei(self, B, SV_gas):
+    def Ei(self, B, jg):
         if self.ki is None:
-            return  self.E0(B, SV_gas) * (1 + (24 * (self.liquid_density / self.gas_density) ** (1 / 3) * B) / self.d)
+            return  self.E0(B, jg) * (1 + (24 * (self.liquid_density / self.gas_density) ** (1 / 3) * B) / self.d)
         else:
-            return  self.E0(B, SV_gas) * (1 + (self.ki * B) / self.d)
+            return  self.E0(B, jg) * (1 + (self.ki * B) / self.d)
     
     def Tc (self, B, jl):
-        return self.Ec(jl) * self.liquid_density * (jl) ** 2 / (8 * (1 - self.Fi(B)) ** 2)
+        return (self.Ec(jl) * self.liquid_density * (jl) ** 2 / (8 * (1 - self.Fi(B)) ** 2)) 
 
-    def wb(self, B, SV_liquid): 
-        T_c = self.Tc(B, SV_liquid)
+    def wb(self, B, jl): 
+        T_c = self.Tc(B, jl)
         form = (T_c / self.liquid_density) ** 0.5
-        return  (2.5 * np.log((B * form / self.liquid_viscosity)) + 5.5) * form
+        # return  (2.5 * np.log((B * form / self.liquid_viscosity)) + 5.5) * form
+        return  0
     
     # Функция для расчета касательного напряжения 
-    def Ti(self, B, SV_gas, SV_liquid): 
-        E_i = self.Ei(B, SV_gas)
+    def Ti(self, B, jg, jl): 
+        E_i = self.Ei(B, jg)
         if self.flg_wb:
-            w_b = self.wb(B, SV_liquid)
+            w_b = self.wb(B, jl)
         else:
             w_b = 0
-        return  E_i * self.gas_density * (SV_gas / self.Fi(B) - w_b) ** 2 /  8 
+        return  (E_i * self.gas_density * (jg / self.Fi(B) - w_b) ** 2 / 8)  
 
     # Функция для расчета градиента давления 
-    def calcDPDZ(self, B, SV_gas, SV_liquid):
-        T_i = self.Ti(B, SV_gas, SV_liquid)
-        return 4.0 * T_i / self.Di(B) + self.gas_density * self.g
-    
+    def calcDPDZ(self, B, jg, jl):
+        Ti = self.Ti(B, jg, jl)
+        # Tc = self.Tc(B, jl)
+        # di = self.Di(B)
+        return 4.0 * Ti / self.Di(B) 
+        # return  (4.0 * self.d * Tc) / (self.d ** 2  - di ** 2) - (4.0 * di * Ti) / (self.d ** 2  - di ** 2) + self.liquid_density * self.g
+                                     
     # Функция по которой считается толщина пленки 
-    def equation(self, B, SV_gas, SV_liquid):    
-        LHS = self.Tc(B, SV_liquid)
-        RHS = self.Ti(B, SV_gas, SV_liquid) + self.delta_density * self.g * B  
+    def equation(self, B, jg, jl):    
+        LHS = self.Ti(B, jg, jl) 
+        RHS = self.Tc(B, jl) * self.Di(B) / self.d
         return LHS - RHS
         
 
@@ -161,7 +171,7 @@ class DpDz():
     def calcOnePoint(self, args):
         sol = optimize.root_scalar(self.equation,
                                 args=args,   
-                                bracket=[1.0e-13, self.d / 2 - 1.0e-13], 
+                                bracket=[1.0e-6, self.d / 2 - 1.0e-6], 
                                 method='brentq')
         return sol.root
         
