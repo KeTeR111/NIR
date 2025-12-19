@@ -59,41 +59,30 @@ class DpDz():
         """
         Расчет расходных скоростей фаз из массовой скорости
         с поддержкой векторных вычислений для меняющегося паросодержания
-        
-        Parameters:
-        G - массовая скорость [kg/m²s] (скаляр или массив)
-        x - паросодержание [0-1] (скаляр или массив)
-        fluid - рабочее вещество
-        P - давление [Pa] (обязательно если не задана T)
-        T - температура [K] (обязательно если не задана P)
         """
-
-        # Преобразуем входные данные в массивы numpy для векторных операций
+        
+        # Проверки
+        if self.G is None or self.x is None:
+            raise ValueError("Для расчета скоростей требуются G и x")
+        
+        if self.liquid_density is None or self.gas_density is None:
+            raise ValueError("Для расчета скоростей требуются плотности фаз")
+        
+        # Преобразуем в массивы
         G_array = np.array(self.G)
         x_array = np.array(self.x)
-
-          # Обеспечиваем правильную размерность массивов
+        
+        # Обеспечиваем правильную размерность массивов
         if G_array.ndim == 0:  # Скаляр
             G_array = np.array([G_array])
         
         if x_array.ndim == 0:  # Скаляр
             x_array = np.array([x_array])
-
-        # Расчет расходных скоростей (векторные операции)
-        SV_liquid = np.outer(G_array, 1 - x_array) / self.liquid_density # Скорость жидкости [m/s]
-        SV_gas = np.outer(G_array, x_array) / self.gas_density        # Скорость пара [m/s]
-
-        SV_liquid = []
-        SV_gas = []
-        for G in G_array:
-            liq = G * (1 - x_array) / self.liquid_density 
-            gas = G * x_array / self.gas_density 
-            SV_liquid.append(liq)
-            SV_gas.append(gas)
-
-        SV_gas = np.array(SV_gas)
-        SV_liquid = np.array(SV_liquid)
-
+        
+        # Используем np.outer для всех комбинаций G и x
+        SV_liquid = np.outer(G_array, 1 - x_array) / self.liquid_density
+        SV_gas = np.outer(G_array, x_array) / self.gas_density
+        
         return SV_liquid, SV_gas
 
     def Re_liquid(self, jl):   
@@ -118,8 +107,10 @@ class DpDz():
         return ((self.d - 2 * B) / self.d) ** 2                                          
         
     # Число Рейнольдса  для газообразной фазы
-    def RE0_gas(self, B, jg):    
-        return (self.gas_density * jg / self.Fi(B) * self.Di(B)) / self.gas_viscosity 
+    def RE0_gas(self, B, jg): 
+        fi = self.Fi(B)
+        di = self.Di(B)
+        return (self.gas_density * jg / fi * di) / self.gas_viscosity 
 
     def E0(self, B, jg):
         Re_G = self.RE0_gas(B, jg)
@@ -129,10 +120,11 @@ class DpDz():
 
     # Коэффициент межфазного трения Уоллиса 
     def Ei(self, B, jg):
+        e0 = self.E0(B, jg)
         if self.ki is None:
-            return  self.E0(B, jg) * (1 + (24 * (self.liquid_density / self.gas_density) ** (1 / 3) * B) / self.d)
+            return  e0 * (1 + (24 * (self.liquid_density / self.gas_density) ** (1 / 3) * B) / self.d)
         else:
-            return  self.E0(B, jg) * (1 + (self.ki * B) / self.d)
+            return  e0 * (1 + (self.ki * B) / self.d)
     
     def Tc (self, B, jl):
         return (self.Ec(jl) * self.liquid_density * (jl) ** 2 / (8 * (1 - self.Fi(B)) ** 2)) 
@@ -146,19 +138,19 @@ class DpDz():
     # Функция для расчета касательного напряжения 
     def Ti(self, B, jg, jl): 
         E_i = self.Ei(B, jg)
+        fi = self.Fi(B)
         if self.flg_wb:
             w_b = self.wb(B, jl)
         else:
             w_b = 0
-        return  (E_i * self.gas_density * (jg / self.Fi(B) - w_b) ** 2 / 8)  
+        return  (E_i * self.gas_density * (jg / fi - w_b) ** 2 / 8)  
 
     # Функция для расчета градиента давления 
     def calcDPDZ(self, B, jg, jl):
         Ti = self.Ti(B, jg, jl)
-        # Tc = self.Tc(B, jl)
-        # di = self.Di(B)
-        return 4.0 * Ti / self.Di(B) 
-        # return  (4.0 * self.d * Tc) / (self.d ** 2  - di ** 2) - (4.0 * di * Ti) / (self.d ** 2  - di ** 2) + self.liquid_density * self.g
+        di = self.Di(B)
+        return 4.0 * Ti / di
+
                                      
     # Функция по которой считается толщина пленки 
     def equation(self, B, jg, jl):    
@@ -174,7 +166,18 @@ class DpDz():
                                 bracket=[1.0e-6, self.d / 2 - 1.0e-6], 
                                 method='brentq')
         return sol.root
-        
+
+    def alpha(self, B):
+        lam = CP.PropsSI('CONDUCTIVITY', 'T', self.T + 273, 'Q', 0, self.substance)
+        a = lam / B
+        return a
+    
+    @property
+    def reduced_pressure(self):
+        P_crit = CP.PropsSI('Pcrit', self.substance)  # Критическое давление
+        P_sat = CP.PropsSI('P', 'T', self.T + 273.15, 'Q', 0, self.substance)  # Давление насыщения
+        return P_sat / P_crit  # Приведённое давление
+
     # Функция всех параметров в 1 точке 
     def calculate_one_point(self, jg, jl, x):
         params = (jg, jl)
@@ -185,6 +188,15 @@ class DpDz():
         dpdz = self.calcDPDZ(B, jg, jl) 
         ReL = self.Re_liquid(jl)
         ReG = self.RE0_gas(B, jg)
+
+        # Рвсчет fi
+        fi = self.Fi(B)
+
+        # Расчет КТО
+        alph = self.alpha(B)
+
+        # Расчет критического давления 
+        Pcrit = self.reduced_pressure
 
         if self.flg_wb:
             w_b = self.wb(B, jl)
@@ -199,30 +211,32 @@ class DpDz():
             'Substance': self.substance,
             'Re liquid': ReL,
             'Re gas': ReG,
-            'x': x
+            'x': x,
+            'fi': fi,
+            'alpha': alph,
+            'Pred': Pcrit
             }
         
         return Res
     
     # Итоговая функция расчета для всех данных точек 
     def calculate(self):
-        ndim_gas = self.SV_gas.ndim
-        ndim_liquid = self.SV_liquid.ndim
         Res = []
-
-        if ndim_gas > 1 or ndim_liquid > 1:
-            for arr1, arr2 in zip(self.SV_gas, self.SV_liquid):
-                res = []
-                for jg, jl, x in zip(arr1, arr2, self.x):
-                    res.append(self.calculate_one_point(jg, jl, x))
-                Res.append(res)
+        
+        # Проверяем, являются ли массивы одномерными
+        if self.SV_gas.ndim == 1 and self.SV_liquid.ndim == 1:
+            # Одномерный случай - параллельная обработка
+            for jg, jl, x in zip(self.SV_gas, self.SV_liquid, self.x):
+                Res.append(self.calculate_one_point(jg, jl, x))
         else:
-            for jl in self.SV_liquid:
-                for jg in self.SV_gas:
-                    Res.append(self.calculate_one_point(jg, jl, x))
-
-        if len(Res) == 1:
-            Res = Res[0]
-
-        return Res
-
+            # Многомерный случай - вложенная обработка
+            for arr_gas, arr_liquid in zip(self.SV_gas, self.SV_liquid):
+                res_row = []
+                for jg, jl, x in zip(arr_gas, arr_liquid, self.x):
+                    res_row.append(self.calculate_one_point(jg, jl, x))
+                Res.append(res_row)
+        
+        # Распаковка единичного результата
+        return Res[0] if len(Res) == 1 else Res
+    
+    
