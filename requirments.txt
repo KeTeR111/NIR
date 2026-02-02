@@ -1,3 +1,16 @@
+# Основные зависимости
+numpy>=2.3.4
+scipy>=1.16.3
+CoolProp>=7.2.0
+pandas>=2.3.3
+matplotlib>=3.10.7
+
+# Тестирование
+pytest>=8.3.4
+pytest-cov>=5.0.0
+pytest-mock>=3.14.0
+
+# Для запуска тестов и разработки
 appnope==0.1.4
 asttokens==3.0.0
 blinker==1.9.0
@@ -6,7 +19,6 @@ charset-normalizer==3.4.4
 click==8.3.1
 comm==0.2.3
 contourpy==1.3.3
-CoolProp==7.2.0
 cycler==0.12.1
 dash==3.3.0
 debugpy==1.8.17
@@ -27,14 +39,11 @@ jupyter_client==8.6.3
 jupyter_core==5.9.1
 kiwisolver==1.4.9
 MarkupSafe==3.0.3
-matplotlib==3.10.7
 matplotlib-inline==0.2.1
 narwhals==2.12.0
 nest-asyncio==1.6.0
-numpy==2.3.4
 openpyxl==3.1.5
 packaging==25.0
-pandas==2.3.3
 parso==0.8.5
 pexpect==4.9.0
 pillow==12.0.0
@@ -51,8 +60,7 @@ pytz==2025.2
 pyzmq==27.1.0
 requests==2.32.5
 retrying==1.4.2
-scipy==1.16.3
-setuptools==80.9.0
+setuptools>=80.9.0
 six==1.17.0
 stack-data==0.6.3
 tornado==6.5.2
